@@ -58,11 +58,11 @@ nav a {
 }
 
 nav a:hover {
-  background-color: #e8f5f3;
+  background-color: #e8eefc;
 }
 
 nav a.active {
-  background-color: #008577;
+  background-color: #2563eb;
   color: white;
 }
 
@@ -172,7 +172,7 @@ button:disabled {
 
 button {
   padding: 12px 16px;
-  background-color: #008577;
+  background-color: #2563eb;
   color: white;
   border: none;
   border-radius: 6px;
@@ -182,7 +182,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background-color: #00695e;
+  background-color: #1d4ed8;
 }
 
 .update-button {
