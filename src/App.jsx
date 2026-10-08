@@ -10,36 +10,37 @@ import { defaultBooks, defaultUsers } from './data/defaults';
 import { loadFromStorage, saveToStorage } from './utils/storage';
 
 function App() {
+  // keep these in App so the pages can share the same lists
   const [books, setBooks] = useState(() =>
-    loadFromStorage('communityLibraryBooks', defaultBooks)
+    loadFromStorage('lmsBooks', defaultBooks)
   );
   const [transactions, setTransactions] = useState(() =>
-    loadFromStorage('communityLibraryTransactions', [])
+    loadFromStorage('lmsTransactions', [])
   );
   const [users, setUsers] = useState(() =>
-    loadFromStorage('communityLibraryUsers', defaultUsers)
+    loadFromStorage('lmsUsers', defaultUsers)
   );
   const [currentUser, setCurrentUser] = useState(() =>
-    loadFromStorage('communityLibrarySession', null)
+    loadFromStorage('lmsSession', null)
   );
 
   useEffect(() => {
-    saveToStorage('communityLibraryBooks', books);
+    saveToStorage('lmsBooks', books);
   }, [books]);
 
   useEffect(() => {
-    saveToStorage('communityLibraryTransactions', transactions);
+    saveToStorage('lmsTransactions', transactions);
   }, [transactions]);
 
   useEffect(() => {
-    saveToStorage('communityLibraryUsers', users);
+    saveToStorage('lmsUsers', users);
   }, [users]);
 
   useEffect(() => {
-    saveToStorage('communityLibrarySession', currentUser);
+    saveToStorage('lmsSession', currentUser);
   }, [currentUser]);
 
-  function handleLogout() {
+  function logout() {
     setCurrentUser(null);
   }
 
@@ -48,21 +49,17 @@ function App() {
       <main>
         <header>
           <h1>Community Library</h1>
-          <p>Manage books, track availability, and manage members.</p>
+          <p>Books, stock and members for the community library.</p>
         </header>
 
-        <Navigation currentUser={currentUser} onLogout={handleLogout} />
+        <Navigation currentUser={currentUser} onLogout={logout} />
 
         <Routes>
           <Route path="/" element={<Dashboard books={books} />} />
           <Route
             path="/books"
             element={
-              <Books
-                books={books}
-                setBooks={setBooks}
-                currentUser={currentUser}
-              />
+              <Books books={books} setBooks={setBooks} currentUser={currentUser} />
             }
           />
           <Route

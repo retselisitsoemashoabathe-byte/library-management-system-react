@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const emptyUserForm = {
+const blankUser = {
   name: '',
   membershipId: '',
   role: 'Member'
@@ -8,45 +8,39 @@ const emptyUserForm = {
 
 function Users({ users, setUsers, currentUser, setCurrentUser }) {
   const [loginId, setLoginId] = useState('');
-  const [form, setForm] = useState(emptyUserForm);
-  const [editingId, setEditingId] = useState(null);
-  const [loginMessage, setLoginMessage] = useState('');
-  const [adminMessage, setAdminMessage] = useState('');
+  const [form, setForm] = useState(blankUser);
+  const [editId, setEditId] = useState(null);
+  const [loginMsg, setLoginMsg] = useState('');
+  const [msg, setMsg] = useState('');
 
-  const isLibrarian = currentUser?.role === 'Librarian';
+  const canEdit = currentUser && currentUser.role === 'Librarian';
 
-  function handleLogin(event) {
-    event.preventDefault();
+  function login(e) {
+    e.preventDefault();
+    const id = loginId.trim().toUpperCase();
+    const found = users.find((u) => u.membershipId.toUpperCase() === id);
 
-    const membershipId = loginId.trim().toUpperCase();
-    const match = users.find(
-      (user) => user.membershipId.toUpperCase() === membershipId
-    );
-
-    if (!match) {
-      setLoginMessage('No user found with that membership ID.');
+    if (!found) {
+      setLoginMsg('Wrong membership ID.');
       return;
     }
 
-    setCurrentUser(match);
+    setCurrentUser(found);
     setLoginId('');
-    setLoginMessage(`Welcome, ${match.name}.`);
+    setLoginMsg('Hi ' + found.name);
   }
 
-  function handleUserChange(event) {
-    const { name, value } = event.target;
-
-    setForm((previousForm) => ({
-      ...previousForm,
-      [name]: value
-    }));
+  function onChange(e) {
+    const field = e.target.name;
+    const value = e.target.value;
+    setForm((old) => ({ ...old, [field]: value }));
   }
 
-  function handleUserSubmit(event) {
-    event.preventDefault();
+  function saveUser(e) {
+    e.preventDefault();
 
-    if (!isLibrarian) {
-      setAdminMessage('Only librarians can manage users.');
+    if (!canEdit) {
+      setMsg('Need librarian login to manage users.');
       return;
     }
 
@@ -55,194 +49,155 @@ function Users({ users, setUsers, currentUser, setCurrentUser }) {
     const role = form.role;
 
     if (!name || !membershipId || !role) {
-      setAdminMessage('Please complete every field.');
+      setMsg('Fill in all the fields.');
       return;
     }
 
-    const idTaken = users.some(
-      (user) =>
-        user.id !== editingId &&
-        user.membershipId.toUpperCase() === membershipId
+    const taken = users.some(
+      (u) => u.id !== editId && u.membershipId.toUpperCase() === membershipId
     );
-
-    if (idTaken) {
-      setAdminMessage('That membership ID is already in use.');
+    if (taken) {
+      setMsg('Membership ID already used.');
       return;
     }
 
-    if (editingId) {
-      const updatedUser = { id: editingId, name, membershipId, role };
-
-      setUsers((previousUsers) =>
-        previousUsers.map((user) =>
-          user.id === editingId ? updatedUser : user
-        )
-      );
-
-      if (currentUser?.id === editingId) {
-        setCurrentUser(updatedUser);
+    if (editId) {
+      const updated = { id: editId, name, membershipId, role };
+      setUsers((old) => old.map((u) => (u.id === editId ? updated : u)));
+      if (currentUser && currentUser.id === editId) {
+        setCurrentUser(updated);
       }
-
-      setEditingId(null);
-      setForm(emptyUserForm);
-      setAdminMessage('User updated successfully.');
+      setEditId(null);
+      setForm(blankUser);
+      setMsg('User updated.');
       return;
     }
 
-    setUsers((previousUsers) => [
-      ...previousUsers,
-      {
-        id: crypto.randomUUID(),
-        name,
-        membershipId,
-        role
-      }
+    setUsers((old) => [
+      ...old,
+      { id: crypto.randomUUID(), name, membershipId, role }
     ]);
-
-    setForm(emptyUserForm);
-    setAdminMessage('User added successfully.');
+    setForm(blankUser);
+    setMsg('User added.');
   }
 
-  function handleEdit(user) {
-    setEditingId(user.id);
+  function startEdit(user) {
+    setEditId(user.id);
     setForm({
       name: user.name,
       membershipId: user.membershipId,
       role: user.role
     });
-    setAdminMessage(`Editing ${user.name}.`);
+    setMsg('Editing ' + user.name);
   }
 
-  function handleCancelEdit() {
-    setEditingId(null);
-    setForm(emptyUserForm);
-    setAdminMessage('Edit cancelled.');
+  function cancelEdit() {
+    setEditId(null);
+    setForm(blankUser);
+    setMsg('');
   }
 
-  function handleDelete(userId) {
-    if (!isLibrarian) {
-      setAdminMessage('Only librarians can delete users.');
+  function removeUser(id) {
+    if (!canEdit) {
+      setMsg('Need librarian login to manage users.');
       return;
     }
 
-    if (currentUser?.id === userId) {
-      setAdminMessage('You cannot delete the account you are using.');
+    if (currentUser && currentUser.id === id) {
+      setMsg("Don't delete the account you're using.");
       return;
     }
 
-    const confirmed = window.confirm('Delete this user?');
-
-    if (!confirmed) {
+    if (!window.confirm('Delete this user?')) {
       return;
     }
 
-    setUsers((previousUsers) =>
-      previousUsers.filter((user) => user.id !== userId)
-    );
-
-    if (editingId === userId) {
-      setEditingId(null);
-      setForm(emptyUserForm);
+    setUsers((old) => old.filter((u) => u.id !== id));
+    if (editId === id) {
+      setEditId(null);
+      setForm(blankUser);
     }
-
-    setAdminMessage('User deleted successfully.');
+    setMsg('User deleted.');
   }
 
   return (
     <section>
-      <h2>User Management</h2>
-      <p>Members sign in with their membership ID. Librarians can add, update, and delete accounts.</p>
+      <h2>Users</h2>
+      <p>Login with membership ID. Librarian can add / update / delete people.</p>
 
       <h3>Login</h3>
       {currentUser ? (
-        <p role="status">
-          You are signed in as {currentUser.name} ({currentUser.membershipId}).
+        <p>
+          Currently: {currentUser.name} ({currentUser.membershipId})
         </p>
       ) : (
-        <form className="app-form" onSubmit={handleLogin}>
+        <form className="app-form" onSubmit={login}>
           <label>
             Membership ID
             <input
               name="membershipId"
               value={loginId}
-              onChange={(event) => setLoginId(event.target.value)}
-              placeholder="e.g. LIB001"
+              onChange={(e) => setLoginId(e.target.value)}
               required
             />
           </label>
-          <button type="submit">Log in</button>
+          <button type="submit">Login</button>
         </form>
       )}
-      <p role="status">{loginMessage}</p>
+      <p>{loginMsg}</p>
       {!currentUser && (
-        <p>Sample accounts: librarian <strong>LIB001</strong>, member <strong>MEM001</strong>.</p>
-      )}
-
-      <h3>Admin view</h3>
-      {!isLibrarian && (
-        <p role="status">
-          Sign in with a librarian membership ID to add, update, or delete users.
+        <p>
+          Try <strong>LIB001</strong> (librarian) or <strong>MEM001</strong> (member).
         </p>
       )}
 
-      <form className="app-form" onSubmit={handleUserSubmit}>
+      <h3>Manage users</h3>
+      {!canEdit && <p>Librarian login needed for the form below.</p>}
+
+      <form className="app-form" onSubmit={saveUser}>
         <label>
           Name
-          <input
-            name="name"
-            value={form.name}
-            onChange={handleUserChange}
-            required
-            disabled={!isLibrarian}
-          />
+          <input name="name" value={form.name} onChange={onChange} required disabled={!canEdit} />
         </label>
-
         <label>
           Membership ID
           <input
             name="membershipId"
             value={form.membershipId}
-            onChange={handleUserChange}
+            onChange={onChange}
             required
-            disabled={!isLibrarian}
+            disabled={!canEdit}
           />
         </label>
-
         <label>
           Role
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleUserChange}
-            disabled={!isLibrarian}
-          >
+          <select name="role" value={form.role} onChange={onChange} disabled={!canEdit}>
             <option value="Member">Member</option>
             <option value="Librarian">Librarian</option>
           </select>
         </label>
-
         <div className="form-actions">
-          <button type="submit" disabled={!isLibrarian}>
-            {editingId ? 'Save Changes' : 'Add User'}
+          <button type="submit" disabled={!canEdit}>
+            {editId ? 'Save' : 'Add User'}
           </button>
-          {editingId && (
-            <button type="button" className="secondary-button" onClick={handleCancelEdit}>
+          {editId && (
+            <button type="button" className="secondary-button" onClick={cancelEdit}>
               Cancel
             </button>
           )}
         </div>
       </form>
 
-      <p role="status">{adminMessage}</p>
+      <p>{msg}</p>
 
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Membership ID</th>
-              <th scope="col">Role</th>
-              <th scope="col">Actions</th>
+              <th>Name</th>
+              <th>Membership ID</th>
+              <th>Role</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -256,16 +211,16 @@ function Users({ users, setUsers, currentUser, setCurrentUser }) {
                     <button
                       type="button"
                       className="update-button"
-                      onClick={() => handleEdit(user)}
-                      disabled={!isLibrarian}
+                      onClick={() => startEdit(user)}
+                      disabled={!canEdit}
                     >
                       Update
                     </button>
                     <button
                       type="button"
                       className="delete-button"
-                      onClick={() => handleDelete(user.id)}
-                      disabled={!isLibrarian}
+                      onClick={() => removeUser(user.id)}
+                      disabled={!canEdit}
                     >
                       Delete
                     </button>
@@ -276,8 +231,6 @@ function Users({ users, setUsers, currentUser, setCurrentUser }) {
           </tbody>
         </table>
       </div>
-
-      {users.length === 0 && <p>No users have been added yet.</p>}
     </section>
   );
 }

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 
 function Navigation({ currentUser, onLogout }) {
   return (
-    <nav aria-label="Main navigation">
+    <nav>
       <div className="nav-links">
         <NavLink to="/" end>Dashboard</NavLink>
         <NavLink to="/books">Books</NavLink>
@@ -13,10 +13,10 @@ function Navigation({ currentUser, onLogout }) {
       {currentUser && (
         <div className="session-bar">
           <p>
-            Signed in as <strong>{currentUser.name}</strong> ({currentUser.role})
+            Logged in: <strong>{currentUser.name}</strong> ({currentUser.role})
           </p>
           <button type="button" className="secondary-button" onClick={onLogout}>
-            Log out
+            Logout
           </button>
         </div>
       )}

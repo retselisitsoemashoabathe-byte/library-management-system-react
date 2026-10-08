@@ -1,23 +1,24 @@
-function stockStatus(quantity) {
-  if (quantity === 0) {
+function getStatus(qty) {
+  if (qty === 0) {
     return 'Out of stock';
   }
-
-  if (quantity < 2) {
+  if (qty < 2) {
     return 'Low stock';
   }
-
   return 'Available';
 }
 
 function Dashboard({ books }) {
-  const lowStockCount = books.filter((book) => book.quantity < 2).length;
-  const totalCopies = books.reduce((total, book) => total + book.quantity, 0);
+  const lowStock = books.filter((b) => b.quantity < 2).length;
+  let copies = 0;
+  for (let i = 0; i < books.length; i++) {
+    copies += books[i].quantity;
+  }
 
   return (
     <section>
       <h2>Dashboard</h2>
-      <p>Current book availability. Fewer than 2 copies means low stock.</p>
+      <p>Stock overview. Yellow rows are books with 0 or 1 copy left.</p>
 
       <div className="summary-cards">
         <article className="summary-card">
@@ -25,12 +26,12 @@ function Dashboard({ books }) {
           <p>{books.length}</p>
         </article>
         <article className="summary-card">
-          <h3>Copies in stock</h3>
-          <p>{totalCopies}</p>
+          <h3>Total copies</h3>
+          <p>{copies}</p>
         </article>
         <article className="summary-card warning">
-          <h3>Low stock titles</h3>
-          <p>{lowStockCount}</p>
+          <h3>Low stock</h3>
+          <p>{lowStock}</p>
         </article>
       </div>
 
@@ -38,31 +39,28 @@ function Dashboard({ books }) {
         <table>
           <thead>
             <tr>
-              <th scope="col">Title</th>
-              <th scope="col">Author</th>
-              <th scope="col">Genre</th>
-              <th scope="col">Copies</th>
-              <th scope="col">Status</th>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Genre</th>
+              <th>Copies</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {books.map((book) => (
-              <tr
-                key={book.id}
-                className={book.quantity < 2 ? 'low-stock' : ''}
-              >
+              <tr key={book.id} className={book.quantity < 2 ? 'low-stock' : ''}>
                 <td>{book.title}</td>
                 <td>{book.author}</td>
                 <td>{book.genre}</td>
                 <td>{book.quantity}</td>
-                <td>{stockStatus(book.quantity)}</td>
+                <td>{getStatus(book.quantity)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {books.length === 0 && <p>No books have been added yet.</p>}
+      {books.length === 0 && <p>No books yet.</p>}
     </section>
   );
 }

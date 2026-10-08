@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { normaliseIsbn } from '../utils/isbn';
+import { cleanIsbn } from '../utils/isbn';
 
-const emptyForm = {
+const blankBook = {
   title: '',
   author: '',
   genre: '',
@@ -10,26 +10,23 @@ const emptyForm = {
 };
 
 function Books({ books, setBooks, currentUser }) {
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
-  const [message, setMessage] = useState('');
+  const [form, setForm] = useState(blankBook);
+  const [editId, setEditId] = useState(null);
+  const [msg, setMsg] = useState('');
 
-  const isLibrarian = currentUser?.role === 'Librarian';
+  const canEdit = currentUser && currentUser.role === 'Librarian';
 
-  function handleChange(event) {
-    const { name, value } = event.target;
-
-    setForm((previousForm) => ({
-      ...previousForm,
-      [name]: value
-    }));
+  function onChange(e) {
+    const field = e.target.name;
+    const value = e.target.value;
+    setForm((old) => ({ ...old, [field]: value }));
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
+  function onSubmit(e) {
+    e.preventDefault();
 
-    if (!isLibrarian) {
-      setMessage('Only librarians can add or update books.');
+    if (!canEdit) {
+      setMsg('Login as librarian first (Users page).');
       return;
     }
 
@@ -37,60 +34,56 @@ function Books({ books, setBooks, currentUser }) {
     const author = form.author.trim();
     const genre = form.genre.trim();
     const isbn = form.isbn.trim();
-    const quantity = Number(form.quantity);
+    const qty = Number(form.quantity);
 
-    if (!title || !author || !genre || !isbn || !form.quantity.trim()) {
-      setMessage('Please complete every field.');
+    if (!title || !author || !genre || !isbn || form.quantity.trim() === '') {
+      setMsg('Fill in all the fields.');
       return;
     }
 
-    if (!Number.isSafeInteger(quantity) || quantity < 0) {
-      setMessage('Quantity must be a whole number of zero or more.');
+    // qty has to be 0, 1, 2... not 1.5
+    if (!Number.isInteger(qty) || qty < 0) {
+      setMsg('Quantity must be 0 or a positive whole number.');
       return;
     }
 
-    const isbnTaken = books.some(
-      (book) =>
-        book.id !== editingId &&
-        normaliseIsbn(book.isbn) === normaliseIsbn(isbn)
+    const duplicate = books.some(
+      (b) => b.id !== editId && cleanIsbn(b.isbn) === cleanIsbn(isbn)
     );
-
-    if (isbnTaken) {
-      setMessage('A book with this ISBN already exists.');
+    if (duplicate) {
+      setMsg('That ISBN is already in the list.');
       return;
     }
 
-    if (editingId) {
-      setBooks((previousBooks) =>
-        previousBooks.map((book) =>
-          book.id === editingId
-            ? { ...book, title, author, genre, isbn, quantity }
-            : book
+    if (editId) {
+      setBooks((old) =>
+        old.map((b) =>
+          b.id === editId ? { ...b, title, author, genre, isbn, quantity: qty } : b
         )
       );
-
-      setEditingId(null);
-      setForm(emptyForm);
-      setMessage('Book updated successfully.');
+      setEditId(null);
+      setForm(blankBook);
+      setMsg('Updated.');
       return;
     }
 
-    const newBook = {
-      id: crypto.randomUUID(),
-      title,
-      author,
-      genre,
-      isbn,
-      quantity
-    };
-
-    setBooks((previousBooks) => [...previousBooks, newBook]);
-    setForm(emptyForm);
-    setMessage('Book added successfully.');
+    setBooks((old) => [
+      ...old,
+      {
+        id: crypto.randomUUID(),
+        title,
+        author,
+        genre,
+        isbn,
+        quantity: qty
+      }
+    ]);
+    setForm(blankBook);
+    setMsg('Book added.');
   }
 
-  function handleEdit(book) {
-    setEditingId(book.id);
+  function startEdit(book) {
+    setEditId(book.id);
     setForm({
       title: book.title,
       author: book.author,
@@ -98,136 +91,97 @@ function Books({ books, setBooks, currentUser }) {
       isbn: book.isbn,
       quantity: String(book.quantity)
     });
-    setMessage(`Editing “${book.title}”.`);
+    setMsg('Editing: ' + book.title);
   }
 
-  function handleCancelEdit() {
-    setEditingId(null);
-    setForm(emptyForm);
-    setMessage('Edit cancelled.');
+  function cancelEdit() {
+    setEditId(null);
+    setForm(blankBook);
+    setMsg('');
   }
 
-  function handleDelete(bookId) {
-    if (!isLibrarian) {
-      setMessage('Only librarians can delete books.');
+  function removeBook(id) {
+    if (!canEdit) {
+      setMsg('Login as librarian first (Users page).');
       return;
     }
 
-    const confirmed = window.confirm('Delete this book?');
-
-    if (!confirmed) {
+    if (!window.confirm('Delete this book?')) {
       return;
     }
 
-    setBooks((previousBooks) =>
-      previousBooks.filter((book) => book.id !== bookId)
-    );
-
-    if (editingId === bookId) {
-      setEditingId(null);
-      setForm(emptyForm);
+    setBooks((old) => old.filter((b) => b.id !== id));
+    if (editId === id) {
+      setEditId(null);
+      setForm(blankBook);
     }
-
-    setMessage('Book deleted successfully.');
+    setMsg('Deleted.');
   }
 
   return (
     <section>
-      <h2>Book Management</h2>
-      <p>
-        Add new titles, update details, or remove books that are no longer held.
-      </p>
+      <h2>Books</h2>
+      <p>Add a book, or click Update on a row to change it.</p>
 
-      {!isLibrarian && (
-        <p role="status">
-          Log in as a librarian on the Users page to add, update, or delete books.
-        </p>
+      {!canEdit && (
+        <p>You can look at the list, but only a librarian can change books.</p>
       )}
 
-      <form className="app-form" onSubmit={handleSubmit}>
+      <form className="app-form" onSubmit={onSubmit}>
         <label>
           Title
-          <input
-            name="title"
-            value={form.title}
-            onChange={handleChange}
-            required
-            disabled={!isLibrarian}
-          />
+          <input name="title" value={form.title} onChange={onChange} required disabled={!canEdit} />
         </label>
-
         <label>
           Author
-          <input
-            name="author"
-            value={form.author}
-            onChange={handleChange}
-            required
-            disabled={!isLibrarian}
-          />
+          <input name="author" value={form.author} onChange={onChange} required disabled={!canEdit} />
         </label>
-
         <label>
           Genre
-          <input
-            name="genre"
-            value={form.genre}
-            onChange={handleChange}
-            required
-            disabled={!isLibrarian}
-          />
+          <input name="genre" value={form.genre} onChange={onChange} required disabled={!canEdit} />
         </label>
-
         <label>
           ISBN
-          <input
-            name="isbn"
-            value={form.isbn}
-            onChange={handleChange}
-            required
-            disabled={!isLibrarian}
-          />
+          <input name="isbn" value={form.isbn} onChange={onChange} required disabled={!canEdit} />
         </label>
-
         <label>
-          {editingId ? 'Quantity' : 'Initial Quantity'}
+          {editId ? 'Quantity' : 'Initial Quantity'}
           <input
             type="number"
             name="quantity"
             min="0"
             step="1"
             value={form.quantity}
-            onChange={handleChange}
+            onChange={onChange}
             required
-            disabled={!isLibrarian}
+            disabled={!canEdit}
           />
         </label>
-
         <div className="form-actions">
-          <button type="submit" disabled={!isLibrarian}>
-            {editingId ? 'Save Changes' : 'Add Book'}
+          <button type="submit" disabled={!canEdit}>
+            {editId ? 'Save' : 'Add Book'}
           </button>
-          {editingId && (
-            <button type="button" className="secondary-button" onClick={handleCancelEdit}>
+          {editId && (
+            <button type="button" className="secondary-button" onClick={cancelEdit}>
               Cancel
             </button>
           )}
         </div>
       </form>
 
-      <p role="status">{message}</p>
+      <p>{msg}</p>
 
-      <h3>Book List</h3>
+      <h3>Current books</h3>
       <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th scope="col">Title</th>
-              <th scope="col">Author</th>
-              <th scope="col">Genre</th>
-              <th scope="col">ISBN</th>
-              <th scope="col">Copies</th>
-              <th scope="col">Actions</th>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Genre</th>
+              <th>ISBN</th>
+              <th>Copies</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -243,16 +197,16 @@ function Books({ books, setBooks, currentUser }) {
                     <button
                       type="button"
                       className="update-button"
-                      onClick={() => handleEdit(book)}
-                      disabled={!isLibrarian}
+                      onClick={() => startEdit(book)}
+                      disabled={!canEdit}
                     >
                       Update
                     </button>
                     <button
                       type="button"
                       className="delete-button"
-                      onClick={() => handleDelete(book.id)}
-                      disabled={!isLibrarian}
+                      onClick={() => removeBook(book.id)}
+                      disabled={!canEdit}
                     >
                       Delete
                     </button>
@@ -264,7 +218,7 @@ function Books({ books, setBooks, currentUser }) {
         </table>
       </div>
 
-      {books.length === 0 && <p>No books have been added yet.</p>}
+      {books.length === 0 && <p>No books yet.</p>}
     </section>
   );
 }
